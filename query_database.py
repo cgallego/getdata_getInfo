@@ -100,9 +100,8 @@ class Query(object):
         
         Output
         ======
-        """
-               
-        # Create the ORMâ€™s â€œhandleâ€ to the database: the Session. 
+        """               
+        # Create the database: the Session. 
         self.Session = sessionmaker()
         self.Session.configure(bind=engine)  # once engine is available
         session = self.Session() #instantiate a Session
@@ -189,7 +188,7 @@ class Query(object):
         rowLabelsnonmass = tuple(["%s" % str(x) for x in xrange(0,len(is_nonmass))])
         # Add display query to wxTable    
         self.display.MassNonM_Container_initGUI(is_nonmass, rowLabelsnonmass, colLabelsnonmass, "NonMasses")
-                
+        
         # Finish the display and Show
         self.display.Centre()
         self.display.Show()
@@ -198,7 +197,7 @@ class Query(object):
         return
         
 
-    def queryDatabasewT2(self, StudyID, redateID):
+    def queryDatabasewNoGui(self, StudyID, redateID):
         """
         run : Query by StudyID/AccesionN pair study to local folder
         
@@ -210,8 +209,93 @@ class Query(object):
         Output
         ======
         """
-               
         # Create the ORMâ€™s â€œhandleâ€ to the database: the Session. 
+        self.Session = sessionmaker()
+        self.Session.configure(bind=engine)  # once engine is available
+        session = self.Session() #instantiate a Session
+        
+        datainfo = []; is_mass=[];  is_nonmass=[]; pathology=[]; 
+        for cad, exam, finding, proc, patho in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
+                     filter(database.Cad_record.pt_id==database.Exam_record.pt_id).\
+                     filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
+                     filter(database.Exam_record.pt_id==database.Procedure.pt_id).\
+                     filter(database.Procedure.pt_procedure_id==database.Pathology.pt_procedure_id).\
+                     filter(database.Cad_record.cad_pt_no_txt == str(StudyID)).\
+                     filter(database.Exam_record.exam_dt_datetime == str(redateID)).all():
+                         
+           # print results
+           if not cad:
+               print "cad is empty"
+           if not exam:
+               print "exam is empty"
+           if not finding:
+               print "finding is empty"
+           if not proc:
+               print "proc is empty"
+           if not patho:
+               print "patho is empty"
+                   
+           datainfo.append([cad.cad_pt_no_txt, cad.latest_mutation_status_int,
+              exam.exam_dt_datetime, exam.a_number_txt, exam.mri_cad_status_txt, exam.comment_txt,
+              finding.mri_mass_yn, finding.mri_nonmass_yn, finding.mri_foci_yn,
+              proc.pt_procedure_id, proc.proc_dt_datetime, proc.proc_side_int, proc.proc_source_int, proc.proc_guid_int, proc.proc_tp_int, proc.original_report_txt])
+           
+           #iterate through patho keys
+           pathodict = patho.__dict__
+           pathokeys = pathodict.keys()
+           pathoItems = pathodict.items()
+           procpath=[]; procLabels=[];
+           for k in range(len(pathokeys)):
+               if( pathoItems[k][1] ):
+                   procpath.append( pathoItems[k][1] )
+                   procLabels.append( str(pathoItems[k][0]) )
+           
+           # add procedure lesion record table 
+           pathology.append(procpath)
+           rowLabels = tuple(["%s" % str(x) for x in xrange(0,len(pathology))])
+           
+           # Find if it's mass or non-mass and process
+           if (finding.mri_mass_yn):
+               is_mass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_mass_margin_int, finding.mammo_n_mri_mass_shape_int, finding.t2_signal_int])
+           
+           # Find if it's mass or non-mass and process
+           if (finding.mri_nonmass_yn):
+               is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int ])
+          
+          ####### finish finding masses and non-masses
+        
+        ################### Send to table display  
+        # add main CAD record table       
+        colLabels = ("cad.cad_pt_no_txt", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt", "exam.mri_cad_status_txt", "exam.comment_txt", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "proc.pt_procedure_id", "proc.proc_dt_datetime", "proc.proc_side_int", "proc.proc_source_int", "proc.proc_guid_int", "proc.proc_tp_int", "proc.original_report_txt")
+        rowLabels = tuple(["%s" % str(x) for x in xrange(0,len(datainfo))])
+        
+        # write output query to pandas frame.
+        self.d1 = pd.DataFrame(data=array(datainfo), columns=list(colLabels))
+        
+        # add mass lesion record table
+        colLabelsmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_mass_margin_int", "finding.mammo_n_mri_mass_shape_int", "finding.t2_signal_int")
+        rowLabelsmass = tuple(["%s" % str(x) for x in xrange(0,len(is_mass))])
+        
+        # add non-mass lesion record table
+        colLabelsnonmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_nonmass_dist_int", "finding.mri_nonmass_int_enh_int", "finding.t2_signal_int")
+        rowLabelsnonmass = tuple(["%s" % str(x) for x in xrange(0,len(is_nonmass))])
+        
+        return   
+        
+        
+    def queryDatabase4T2(self, StudyID, redateID):
+        """
+        run : Query by StudyID/AccesionN pair study to local folder
+        
+        Inputs
+        ======
+        StudyID : (int)    CAD StudyID
+        redateID : (int)  CAD StudyID Data of exam (format yyyy-mm-dd)
+        
+        Output
+        ======
+        """               
+        # Create the database: the Session. 
         self.Session = sessionmaker()
         self.Session.configure(bind=engine)  # once engine is available
         session = self.Session() #instantiate a Session
@@ -225,7 +309,7 @@ class Query(object):
         #    print cad_case.pt_id, cad_case.cad_pt_no_txt, cad_case.latest_mutation_status_int    
         
         datainfo = []; is_mass=[];  is_nonmass=[]; pathology=[]; 
-        for cad, exam, finding, proc in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
+        for cad, exam, finding, proc, patho in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
                      filter(database.Cad_record.pt_id==database.Exam_record.pt_id).\
                      filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
                      filter(database.Exam_record.pt_id==database.Procedure.pt_id).\
@@ -298,12 +382,23 @@ class Query(object):
         rowLabelsnonmass = tuple(["%s" % str(x) for x in xrange(0,len(is_nonmass))])
         # Add display query to wxTable    
         self.display.MassNonM_Container_initGUI(is_nonmass, rowLabelsnonmass, colLabelsnonmass, "NonMasses")
-                
+        
         # Finish the display and Show
         self.display.Centre()
         self.display.Show()
         self.app.MainLoop() 
-
-        return        
         
+        # add info
+        if (is_mass):
+            rowCase = int(raw_input('pick row for MASS (0-n): '))
+            self.massframe = pd.DataFrame(data=array( is_mass[rowCase] ))
+            self.massframe = self.massframe.transpose()
+            self.massframe.columns = list(colLabelsmass)
+            
+        if (is_nonmass):
+            rowCase = int(raw_input('pick row for NONMASS (0-n): '))
+            self.nonmassframe = pd.DataFrame(data=array( is_nonmass[rowCase] ))
+            self.nonmassframe = self.nonmassframe.transpose()
+            self.nonmassframe.columns = list(colLabelsnonmass)
         
+        return

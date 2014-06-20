@@ -91,28 +91,28 @@ class Pathology(Base):
         return "Pathology: cytology_int=%s, biopsy_benign_yn=%s, biopsy_high_risk_yn=%s, insitu_carcinoma=%s, invasive_carcinoma=%s, " % (self.cytology_int, self.histop_core_biopsy_benign_yn, self.histop_core_biopsy_high_risk_yn, self.histop_tp_isc_yn, self.histop_tp_ic_yn)
 
   
-#  created exam_finding_lesion_link  
-class Finding_Lesion_link(Base):
-    """Base for Finding_Lesion_link class using Declarative. """
-    __tablename__ = 'tbl_pt_exam_finding_lesion_link'
-    __table_args__ = {'autoload':True}
-    pt_exam_finding_lesion_link_id = Column(Integer, primary_key=True)
-    
-    # class introduces the ForeignKey construct, which is a directive applied to Column that indicates that values in this column should be constrained to be values present in the named remote column.
-    pt_exam_finding_id = Column(Integer, ForeignKey('tbl_pt_exam_finding.pt_exam_finding_id'))
-    
-    def __repr__(self):
-        return
-
-
-#  created exam_lesion_  
-class Exam_Lesion(Base):
-    """Base for tbl_pt_exam_lesion class using Declarative. """
-    __tablename__ = 'tbl_pt_exam_lesion'
-    __table_args__ = {'autoload':True}
-    
-    # class introduces the ForeignKey construct, which is a directive applied to Column that indicates that values in this column should be constrained to be values present in the named remote column.
-    pt_exam_lesion_id = Column(Integer, ForeignKey('tbl_pt_exam_finding_lesion_link.pt_exam_lesion_id'))
-    
-    def __repr__(self):
-        return
+##  created exam_finding_lesion_link  
+#class Finding_Lesion_link(Base):
+#    """Base for Finding_Lesion_link class using Declarative. """
+#    __tablename__ = 'tbl_pt_exam_finding_lesion_link'
+#    __table_args__ = {'autoload':True}
+#    pt_exam_finding_lesion_link_id = Column(Integer, primary_key=True)
+#    
+#    # class introduces the ForeignKey construct, which is a directive applied to Column that indicates that values in this column should be constrained to be values present in the named remote column.
+#    pt_exam_finding_id = Column(Integer, ForeignKey('tbl_pt_exam_finding.pt_exam_finding_id'))
+#    
+#    def __repr__(self):
+#        return
+#
+#
+##  created exam_lesion_  
+#class Exam_Lesion(Base):
+#    """Base for tbl_pt_exam_lesion class using Declarative. """
+#    __tablename__ = 'tbl_pt_exam_lesion'
+#    __table_args__ = {'autoload':True}
+#    
+#    # class introduces the ForeignKey construct, which is a directive applied to Column that indicates that values in this column should be constrained to be values present in the named remote column.
+#    pt_exam_lesion_id = Column(Integer, ForeignKey('tbl_pt_exam_finding_lesion_link.pt_exam_lesion_id'))
+#    
+#    def __repr__(self):
+#        return

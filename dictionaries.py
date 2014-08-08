@@ -19,7 +19,7 @@ clinical_aet="AS0SUNB"
 clinical_IP='142.76.62.102'
 clinical_port='104'
 
-data_loc='Z:\Cristina\MassNonmass\codeProject\codeBase\getdata'
+data_loc='C:/Users/windows/Documents/repoCode-local/getdata_getInfo'
 
 biomatrix_user='biomatrix_ruser_mri_cad'
 biomatrix_password='bi0matrix4mricadSTUDY'

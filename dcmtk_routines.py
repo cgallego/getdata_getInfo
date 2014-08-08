@@ -53,101 +53,187 @@ def get_only_filesindirectory(mydir):
 
 def check_MRI_MARTEL(path_rootFolder, remote_aet, remote_port, remote_IP, local_port, PatientID, StudyID, AccessionN):
     # Get Root folder ( the directory of the script being run)
-    #path_rootFolder = 'Z:\Cristina\Pipeline4Archive\Get_Anonymized_Accession_FULL' 
+    os.chdir(path_rootFolder) 
+    are_pushed_img = False
     
-    os.chdir(path_rootFolder)
-    os.chmod(path_rootFolder, stat.S_IWRITE)       
-    if not(os.path.exists('outcome')):
-        os.mkdir('outcome')
-    os.chmod(path_rootFolder+os.sep+'outcome', stat.S_IWRITE) 
-    
-    if not(os.path.exists('querydata')):
-        os.mkdir('querydata')
-    os.chmod(path_rootFolder+os.sep+'querydata', stat.S_IWRITE) 
-
-    if not(os.path.exists('checkdata')):
-        os.mkdir('checkdata')         
-    os.chmod(path_rootFolder+os.sep+'checkdata', stat.S_IWRITE) 
-
-    
-    print 'EXECUTE DICOM/Archive Commands ...'
-    print 'Query,  Pull,  Anonymize, Push ...'
-
-    print '\n--------- QUERY Suject (MRN): "' + PatientID + '" in "' + remote_aet + '" from "'+ my_aet + '" ----------'
-    print "Checking whether wanted exam is archived on 'MRI_MARTEL'.\n"
-
-    cmd=path_rootFolder+os.sep+'findscu -v -S -k 0008,0020="" -k 0010,0010="" -k 0010,0020="" -k 0008,0018="" -k 0008,103e="" -k 0020,000e="" '+\
-            '-k 0008,0050='+AccessionN+' -k 0008,0052="SERIES" \
-        -aet '+my_aet+' -aec '+remote_aet+' '+remote_IP+' '+remote_port+' > '+ 'checkdata1'+os.sep+'checkdata_'+AccessionN+'.txt' 
-        
+    cmd='findscu -v -S -k 0009,1002="" -k 0008,1030="" -k 0008,103e="" -k 0010,0010="" -k 0010,0020="" \
+            -k 0008,0020="" -k 0008,0050='+AccessionN+' -k 0020,0011="" -k 0008,0052="SERIES" \
+            -k 0020,000D="" -k 0020,000e="" -k 0020,1002="" -k 0008,0070="" \
+            -aet '+my_aet+' -aec '+remote_aet+' '+remote_IP+' '+remote_port+' > '+ 'checkdata'+os.sep+'findscu_'+AccessionN+'_SERIES.txt' 
+              
     print '\n---- Begin query with ' + remote_aet + ' by PatientID ....' ;
     print "cmd -> " + cmd
     p1 = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
     p1.wait()
-
+    
+    # Create fileout to print listStudy information
+    # if StudyID folder doesn't exist create it        
+    if not os.path.exists(path_rootFolder+os.sep+str(StudyID)):
+        os.makedirs(path_rootFolder+os.sep+str(StudyID))
+     
+    os.chdir(path_rootFolder+os.sep+str(StudyID))
+     
+    # if AccessionN folder doesn't exist create it        
+    if not os.path.exists(str(AccessionN)):
+        os.makedirs(str(AccessionN))
+        
+    os.chdir(str(path_rootFolder))    
+    
     #################################################
     # Check mthat accession exists
-    readQueryFile1 = open( 'checkdata1'+os.sep+'checkdata_'+AccessionN+'.txt' )
+    readQueryFile1 = open('checkdata'+os.sep+'findscu_'+AccessionN+'_SERIES.txt' , 'r')
     readQueryFile1.seek(0)
     line = readQueryFile1.readline()
-    ListOfSeries = []
-    while ( line ) : # readQueryFile1.readlines()):
-        #print line
-        if '(0008,0020) DA [' in line: #(0020,000d) UI
-            lineStudyDate = line
-            item = lineStudyDate
-            pullStudyDate = item[item.find('[')+1:item.find(']')]
-
-            nextline =  readQueryFile1.readline(),
-
-            if '(0008,0050) SH' in nextline[0]:    # Filters by Modality MR
-                item = nextline[0]
-                newAccessionN = item[item.find('[')+1:item.find(']')]
-
-            nextline =  readQueryFile1.readline(),
-
-            while ( '(0008,103e) LO' not in nextline[0]) : #(0008,1030) LO
-                nextline = readQueryFile1.readline(),
-
-            item = nextline[0]
-            pullExamsDescriptions = item[item.find('[')+1:item.find(']')]
-            print 'MRStudyDate => ' + pullStudyDate
-            print 'newAccessionNumber => ' + newAccessionN
-            print 'pullExamsDescriptions => ' + pullExamsDescriptions
-
-            '''---------------------------------------'''
-            ListOfSeries.append([pullStudyDate, newAccessionN, pullExamsDescriptions])
+    print '---------------------------------------\n'
+    ListOfExamsUID = []  
+    ListOfSeriesUID = []
+    ListOfSeriesID = []
+    count = 0
+    match = 0
+    
+    while ( line ) : 
+        if '(0008,0020) DA [' in line:    #SerieDate
+            item = line
+            exam_date = item[item.find('[')+1:item.find(']')]        
+            #print 'exam_date => ' + exam_date    
             line = readQueryFile1.readline()
+            
+        elif '(0010,0020) LO [' in line:    #patient_id
+            item = line
+            patient_id = item[item.find('[')+1:item.find(']')]        
+            #print 'patient_id => ' + patient_id    
+            line = readQueryFile1.readline()
+            
+        elif '(0010,0010) PN [' in line:    #patient_name
+            item = line
+            patient_name = item[item.find('[')+1:item.find(']')] # this need to be anonymized
+            patient_name = "AnonName"
+            #print 'patient_name => ' + patient_name    
+            line = readQueryFile1.readline()
+            
+        elif '(0008,1030) LO [' in line:    #exam_description
+            item = line
+            exam_description = item[item.find('[')+1:item.find(']')]        
+            #print 'exam_description => ' + exam_description
+            line = readQueryFile1.readline()
+            
+        elif '(0020,000d) UI [' in line:    #exam_uid
+            item = line
+            exam_uid = item[item.find('[')+1:item.find(']')]        
+            #print 'exam_uid => ' + exam_uid    
+            ListOfExamsUID.append(exam_uid)
+            line = readQueryFile1.readline()
+            
+        elif '(0008,0050) SH [' in line:    #exam_number
+            item = line
+            accession_number = item[item.find('[')+1:item.find(']')]        
+            #print 'accession_number => ' + accession_number    
+            line = readQueryFile1.readline()
+            
+        elif '(0008,103e) LO [' in line:    #series_description
+            item = line
+            series_description = item[item.find('[')+1:item.find(']')]        
+            #print 'series_description => ' + series_description
+            line = readQueryFile1.readline()
+            
+        elif '(0020,000e) UI [' in line:    #series_uid
+            item = line
+            series_uid = item[item.find('[')+1:item.find(']')]        
+            #print 'series_uid => ' + series_uid
+            ListOfSeriesUID.append(series_uid)
+            line = readQueryFile1.readline()
+                    
+        elif '(0020,0011) IS [' in line:    #series_number
+            item = line
+            series_number = item[item.find('[')+1:item.find(']')]
+            series_number = series_number.rstrip()
+            ListOfSeriesID.append(series_number)
+            #print 'series_number => ' + series_number
+            
+            if(match == 0):  # first series so far
+                match = 1
+                print " \nAccessionN: %1s %2s %3s %4s %5s \n" % (accession_number, patient_name, patient_id, exam_date, exam_description)
+                print " series: # %2s %3s %4s \n" % ('series_number', 'series_description', '(#Images)')
+
+            line = readQueryFile1.readline()
+            
+        elif( (line.rstrip() == '--------') and (match == 1) ):
+                            
+            print ' series %2d: %3d %4s' % (int(count), int(series_number), series_description)
+            # ------------ FInish obtaining SERIES info 
+                  
+            line = readQueryFile1.readline()
+            count += 1;
         else:
             line = readQueryFile1.readline()
-    
+                                          
     readQueryFile1.close()
+    IDser = 0
+        
+    #################################################    
+    for IDseries in ListOfSeriesID:
+        # if ExamID folder doesn't exist create it    
+        os.chdir(str(StudyID))
+        os.chdir(str(AccessionN))
+        if not os.path.exists(str(ListOfSeriesID[int(IDser)])):
+            os.makedirs(str(ListOfSeriesID[int(IDser)]))
+        
+        os.chdir(str(ListOfSeriesID[int(IDser)]))
+        
+        # Proceed to retrive images
+        # query protocol using the DICOM C-FIND primitive. 
+        # For Retrieval the C-MOVE protocol requires that all primary keys down to the hierarchy level of retrieve must be provided
+        cmd = path_rootFolder+os.sep+'movescu -S +P '+ local_port +' -k 0008,0052="SERIES" -k 0020,000d=' + ListOfExamsUID[int(IDser)] + ' -k 0020,000e=' + ListOfSeriesUID[int(IDser)] + '\
+        -aec ' + remote_aet + ' -aet ' + my_aet + ' -aem ' + my_aet + ' ' + remote_IP + ' ' + remote_port
+        print cmd
+                
+        # Image transfer takes place over the C-STORE primitive (Storage Service Class). 
+        # All of that is documented in detail in pa  rt 4 of the DICOM standard.
+        p1 = subprocess.Popen(cmd, shell=False)
+        p1.wait()
+        
+        # After transfer Get total number of files to Anonymize
+        path_Series_files = path_rootFolder+os.sep+str(StudyID)+os.sep+str(AccessionN)+os.sep+str(ListOfSeriesID[int(IDser)])
+        listSeries_files = get_only_filesindirectory(path_Series_files)
+        print "\n===========\nLength of retrieved series images"
+        print len(listSeries_files)
+        
+        if listSeries_files:
+            are_pushed_img = True
+            #Cleanup the tmp directory.
+            os.chdir(path_rootFolder)
+            try:
+                if os.path.isdir(StudyID):
+                    shutil.rmtree(StudyID)    #os.rmdir(StudyNo)    #remove    # removedirs
+            except ValueError:
+                print "Deleting a Directory is problematic."
+            break
+        else:
+            are_pushed_img = False
+
+        # Go back - go to next 
+        os.chdir(path_rootFolder)  
+        IDser += 1
     
-    #################################################
-    # Added: User input to pull specific Exam by Accession
-    # Added by Cristina Gallego. April 26-2013
-    #################################################
-    iExamPair=[]
-    flagfound = 1
-    for iExamPair in ListOfSeries: # iExamID, iExamUID in ListOfExamsUID: #
-        SelectedAccessionN = iExamPair[1]
-        str_count = '';
-
-        if SelectedAccessionN.strip() == AccessionN.strip():
-            flagfound = 0
-
-    if flagfound == 1:
+    if are_pushed_img == False:
         fil=open('outcome/Errors_findscu_MRI_MARTEL.txt','a+')
         fil.write(str(AccessionN)+'\tAccession number not found in '+remote_aet+'\n')
         fil.close()
         print "\n===============\n"
+        print 'Accession number NOT found in '+remote_aet
         sys.exit('Error. Accession number not found in '+remote_aet)
     else:
         print "\n===============\n"
         print 'Accession number found in '+remote_aet
 
-    # Create fileout to print listStudy information
+    return 
+    
+
+def pull_MRI_MARTEL(data_loc, img_folder, remote_aet, remote_port, remote_IP, local_port, PatientID, StudyID, AccessionN, countImages=False):
+
+     # Create fileout to print listStudy information
     # if StudyID folder doesn't exist create it
+    os.chdir(str(img_folder))
     if not os.path.exists(str(StudyID)):
         os.makedirs(str(StudyID))
 
@@ -156,12 +242,8 @@ def check_MRI_MARTEL(path_rootFolder, remote_aet, remote_port, remote_IP, local_
     # if AccessionN folder doesn't exist create it
     if not os.path.exists(str(AccessionN)):
         os.makedirs(str(AccessionN))
-
-    return
-
-def pull_MRI_MARTEL(data_loc, remote_aet, remote_port, remote_IP, local_port, PatientID, StudyID, AccessionN, countImages=False):
-
-    os.chdir(str(data_loc))
+    
+    os.chdir(data_loc)    
     cmd='findscu -v -S -k 0009,1002="" -k 0008,1030="" -k 0008,103e="" -k 0010,0010="" -k 0010,0020="" \
             -k 0008,0020="" -k 0008,0050='+AccessionN+' -k 0020,0011="" -k 0008,0052="SERIES" \
             -k 0020,000D="" -k 0020,000e="" -k 0020,1002="" -k 0008,0070="" \
@@ -184,11 +266,8 @@ def pull_MRI_MARTEL(data_loc, remote_aet, remote_port, remote_IP, local_port, Pa
     # 2nd-Part: # Required for pulling images.
     # Added by Cristina Gallego. July 2013
     ################################################
-    imagepath = str(StudyID)+'/'+str(AccessionN)
+    imagepath = str(img_folder)+'/'+str(StudyID)+'/'+str(AccessionN)
     print 'imagepath: ', imagepath
-
-    if not(os.path.exists(imagepath)):
-        os.mkdir(imagepath)
 
      #################################################
     # Check mthat accession exists
@@ -337,6 +416,9 @@ def pull_MRI_MARTEL(data_loc, remote_aet, remote_port, remote_IP, local_port, Pa
     IDser = 0
     
     for IDseries in ListOfSeriesID:
+        os.chdir(str(img_folder))
+        print os.getcwd()
+    
         # if ExamID folder doesn't exist create it    
         os.chdir(str(StudyID))
         os.chdir(str(AccessionN))
@@ -366,7 +448,7 @@ def pull_MRI_MARTEL(data_loc, remote_aet, remote_port, remote_IP, local_port, Pa
 
 def pull_MRI_MARTELold(data_loc, remote_aet, remote_port, remote_IP, local_port, PatientID, StudyID, AccessionN, ExamID, countImages):
 
-    os.chdir(str(path_rootFolder))
+    os.chdir(str(data_loc))
     # the DICOM query model is strictly hierarchical and the information model hierarchy is PATIENT - STUDY - SERIES - INSTANCE
     # Each query can only retrieve information at exactly one of these levels, and the unique keys of all higher levels must be provided as part of the query. In practice that means you first have to identify a patient, then you can identify studies for that patient, then you can check which series within one study exist and finally you could see which instances (DICOM objects, images) there are within one series. 
     # First findscu will retrive SERIES for a given STUDYID
@@ -490,7 +572,7 @@ def pull_MRI_MARTELold(data_loc, remote_aet, remote_port, remote_IP, local_port,
 #            
         elif( (line.rstrip() == '--------') and (match == 1) ):
             if (countImages==True): # some servers don't return 0020,1002, so count the series
-                os.chdir(str(path_rootFolder))
+                os.chdir(str(data_loc))
                 cmd = 'findscu -v -S -k 0009,1002="" -k 0008,1030="" -k 0008,103e="" -k 0010,0010="" -k 0010,0020="" \
                 -k 0010,0020="" -k 0008,1030="" -k 0008,0020="" -k 0008,0050='+AccessionN+' -k 0020,0010=' + ExamID + ' -k 0020,0011="" -k 0008,0052="IMAGE" \
                 -k 0020,000D="" -k 0020,000e='+series_uid+' -k 0020,0013="" -k 0020,0020="" -k 0008,0023="" -k 0008,0033="" -k 00028,0102="" \
@@ -553,7 +635,7 @@ def pull_MRI_MARTELold(data_loc, remote_aet, remote_port, remote_IP, local_port,
         # Proceed to retrive images
         # query protocol using the DICOM C-FIND primitive. 
         # For Retrieval the C-MOVE protocol requires that all primary keys down to the hierarchy level of retrieve must be provided
-        cmd = path_rootFolder+os.sep+'movescu -S +P '+ local_port +' -k 0008,0052="SERIES" -k 0020,000d=' + ListOfExamsUID[int(IDser)] + ' -k 0020,000e=' + ListOfSeriesUID[int(IDser)] + '\
+        cmd = data_loc+os.sep+'movescu -S +P '+ local_port +' -k 0008,0052="SERIES" -k 0020,000d=' + ListOfExamsUID[int(IDser)] + ' -k 0020,000e=' + ListOfSeriesUID[int(IDser)] + '\
         -aec ' + remote_aet + ' -aet ' + my_aet + ' -aem ' + my_aet + ' ' + remote_IP + ' ' + remote_port
         print cmd
             
@@ -563,27 +645,28 @@ def pull_MRI_MARTELold(data_loc, remote_aet, remote_port, remote_IP, local_port,
         p1.wait()
         
         # Go back - go to next 
-        os.chdir(str(path_rootFolder))    
+        os.chdir(str(data_loc))    
         IDser += 1
         
     ########## END PULL #######################################
     return
     
-def check_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_IP, local_port, PatientID, StudyID, AccessionN):
-
+def check_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, local_port, PatientID, StudyID, AccessionN):
+    
+    os.chdir(data_loc)
     print '\n--------- QUERY Suject (MRN): "' + PatientID + '" in "' + clinical_aet + '" from "'+ my_aet + '" ----------'
 
     cmd = 'findscu -v -P -k 0008,1030="" -k 0008,103e="" -k 0010,0010="" -k 0010,0020="' + PatientID + 'SHSC*''"\
     -k 0008,1030="" -k 0008,0052="STUDY" -k 0008,0020="" -k 0020,0010="" -k 0008,0050="*" \
     -k 0008,0060="" -k 0020,0011="" -k 0020,000D= -k 0020,1002="" -aet ' + my_aet + \
-    ' -aec ' + clinical_aet + ' ' + clinical_IP + ' ' + clinical_port + ' > ' + data_loc+'/querydata/'+PatientID+'_querydata_'+AccessionN+'.txt'     #142.76.62.102
+    ' -aec ' + clinical_aet + ' ' + clinical_IP + ' ' + clinical_port + ' >  querydata/'+PatientID+'_querydata_'+AccessionN+'.txt'     #142.76.62.102
 
     print '\n---- Begin query with ' + clinical_aet + ' by PatientID ....' ;
     print "cmd -> " + cmd
     p1 = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
     p1.wait()
 
-    readQueryFile1 = open(data_loc+'/querydata/'+PatientID+'_querydata_'+AccessionN+'.txt', 'r')
+    readQueryFile1 = open( 'querydata/'+PatientID+'_querydata_'+AccessionN+'.txt', 'r')
     readQueryFile1.seek(0)
     line = readQueryFile1.readline()
     ListOfSeries = []
@@ -639,14 +722,16 @@ def check_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_
         print "\n===============\n"
         print 'Accession number Not found in '+clinical_aet+'- Abort'
         print "\n===============\n"
-        fil=open(data_loc+'/outcome/Errors_findscu_AS0SUNB.txt','a+')
+        fil=open('outcome/Errors_findscu_AS0SUNB.txt','a+')
         fil.write(PatientID+'\t'+StudyID+'\t'+str(AccessionN)+'\tAccession number found in '+clinical_aet+'\n')
         fil.close()
         sys.exit()
 
     return
 
-def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_IP, local_port, PatientID, StudyID, AccessionN):
+def pull_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, local_port, PatientID, StudyID, AccessionN):
+    
+    os.chdir(data_loc)
     print 'EXECUTE DICOM/Archive Commands ...'
     print 'Query,  Pull,  Anonymize, Push ...'
 
@@ -655,14 +740,14 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     cmd = 'findscu -v -P -k 0008,1030="" -k 0008,103e="" -k 0010,0010="" -k 0010,0020="' + PatientID + 'SHSC*''"\
     -k 0008,1030="" -k 0008,0052="STUDY" -k 0008,0020="" -k 0020,0010="" -k 0008,0050="*" \
     -k 0008,0060="" -k 0020,0011="" -k 0020,000D= -k 0020,1002="" -aet ' + my_aet + \
-    ' -aec ' + clinical_aet + ' ' + clinical_IP + ' ' + clinical_port + ' > ' + data_loc+'/querydata/'+PatientID+'_querydata_'+AccessionN+'.txt'     #142.76.62.102
+    ' -aec ' + clinical_aet + ' ' + clinical_IP + ' ' + clinical_port + ' > querydata/'+PatientID+'_querydata_'+AccessionN+'.txt'     #142.76.62.102
 
     print '\n---- Begin query with ' + clinical_aet + ' by PatientID ....' ;
     print "cmd -> " + cmd
     p1 = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
     p1.wait()
 
-    readQueryFile1 = open(data_loc+'/querydata/'+PatientID+'_querydata_'+AccessionN+'.txt', 'r')
+    readQueryFile1 = open( 'querydata/'+PatientID+'_querydata_'+AccessionN+'.txt', 'r')
     readQueryFile1.seek(0)
     line = readQueryFile1.readline()
     print
@@ -746,8 +831,9 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
                 print iAccessionN, iExamUID
                 print "\n===============\n"
                 break
+            
     if flagfound == 1:
-        fil=open(data_loc+'/outcome/Errors_pull_AS0SUNB.txt','a')
+        fil=open( 'outcome/Errors_pull_AS0SUNB.txt','a')
         fil.write(PatientID+'\t'+StudyID+'\t'+str(AccessionN)+'\tAccession number not found in AS0SUNB\n')
         fil.close()
         print "\n===============\n"
@@ -756,23 +842,23 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
 
     # Create fileout to print listStudy information
     # if StudyID folder doesn't exist create it
-    if not os.path.exists(data_loc+os.sep+str(StudyID)):
-        os.makedirs(data_loc+os.sep+str(StudyID))
+    if not os.path.exists(img_folder+os.sep+str(StudyID)):
+        os.makedirs(img_folder+os.sep+str(StudyID))
 
-    os.chdir(data_loc+os.sep+str(StudyID))
+    os.chdir(img_folder+os.sep+str(StudyID))
 
     # if AccessionN folder doesn't exist create it
     if not os.path.exists(str(AccessionN)):
         os.makedirs(str(AccessionN))
 
-    os.chdir(str(path_rootFolder))
+    os.chdir(str(data_loc))
 
     #################################################
     # 2nd-Part: # Required for pulling images.
     # Added by Cristina Gallego. July 2013
     #################################################
-    writeRetrieveFile1 = open(data_loc+'/outcome/oRetrieveExam.txt', 'w')
-    readRetrieveFile1 = open(data_loc+'/outcome/RetrieveExam.txt', 'r')
+    writeRetrieveFile1 = open( 'outcome/oRetrieveExam.txt', 'w')
+    readRetrieveFile1 = open( 'outcome/RetrieveExam.txt', 'r')
     print "Read original tags from RetrieveExam.txt. ......"
     readRetrieveFile1.seek(0)
     line = readRetrieveFile1.readline()
@@ -794,7 +880,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     writeRetrieveFile1.close()
     readRetrieveFile1.close()
 
-    readRetrieveFile2 = open(data_loc+'/outcome/oRetrieveExam.txt', 'r')
+    readRetrieveFile2 = open( 'outcome/oRetrieveExam.txt', 'r')
     print "Updated tags from oRetrieveExam.txt. ......"
     for line in readRetrieveFile2.readlines(): # failed to print out ????
         print line,
@@ -802,7 +888,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
 
     print '---------------------------------------'
     print os.path.isfile('dump2dcm.exe')
-    cmd = 'dump2dcm '+data_loc+'/outcome/oRetrieveExam.txt '+data_loc+'/outcome/RetrieveExam.dcm' #r'dump2dcm
+    cmd = 'dump2dcm outcome/oRetrieveExam.txt outcome/RetrieveExam.dcm' #r'dump2dcm
     print 'cmd -> ' + cmd
     print 'Begin dump to dcm ....' ;
     os.system(cmd)
@@ -810,11 +896,11 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     print
 
     # Now Create a subfolder : AccessionN to pull images .
-    os.chdir(data_loc+os.sep+str(StudyID)+os.sep+str(AccessionN))
+    os.chdir(img_folder+os.sep+str(StudyID)+os.sep+str(AccessionN))
 
     ########## START PULL #######################################
     print 'Pulling images to cwd: ' + os.getcwd()
-    cmd = path_rootFolder+'/movescu -v -P +P ' + local_port + ' -aem ' + my_aet + ' -aet ' + my_aet + ' -aec ' + clinical_aet \
+    cmd = data_loc+'/movescu -v -P +P ' + local_port + ' -aem ' + my_aet + ' -aet ' + my_aet + ' -aec ' + clinical_aet \
     + ' ' + clinical_IP + ' ' + clinical_port + ' ' + data_loc+'/outcome/RetrieveExam.dcm '
 
     print 'cmd -> ' + cmd
@@ -823,7 +909,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     ########## END PULL #######################################
 
     print 'Next, to group "raw" image files into a hierarchical. ...'
-    imagepath = data_loc+os.sep+str(StudyID)+os.sep+str(AccessionN) + '\\MR*.*'
+    imagepath = img_folder+os.sep+str(StudyID)+os.sep+str(AccessionN) + '\\MR*.*'
     print 'imagepath: ', imagepath
 
     #################################################################
@@ -832,18 +918,18 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     # (0010,0010),PatientName/ID                                    #
     # (0012,0021),"BRCA1F"  (0012,0040),StudyNo                     #
     ###########################################
-    os.chdir(str(path_rootFolder))
+    os.chdir(str(data_loc))
     
     # Group all image files into a number of series for StudyUID/SeriesUID generation.
-    cmd = 'dcmdump +f -L +F +P "0020,000e" +P "0020,0011" "' + imagepath + '" > '+data_loc+'/outcome/pulledDicomFiles.txt'
+    cmd = 'dcmdump +f -L +F +P "0020,000e" +P "0020,0011" "' + imagepath + '" > outcome/pulledDicomFiles.txt'
     print 'cmd -> ' + cmd
     print 'Begin SortPulledDicom ....' ;
     p1 = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
     p1.wait()
     
-    readPulledFiles = open(data_loc+'/outcome/pulledDicomFiles.txt', 'r')
+    readPulledFiles = open('outcome/pulledDicomFiles.txt', 'r')
     
-    cmd = 'dcmdump +f -L +F +P "0020,000e" +P "0008,103e" "' + imagepath + '" > '+data_loc+'/outcome/descripPulledDicomFiles_'+str(StudyID)+'.txt'
+    cmd = 'dcmdump +f -L +F +P "0020,000e" +P "0008,103e" "' + imagepath + '" > outcome/descripPulledDicomFiles_'+str(StudyID)+'.txt'
     print 'cmd -> ' + cmd
     print 'Begin SortPulledDicom ....' ;
     p2 = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE)
@@ -933,7 +1019,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
                 #outlines = outlines + SeriesPair[0] + '\n';
         outlines = outlines + k + ', \t\t' + v + '\t\t' + str(len(imagefList)) + '\n\n';
 
-    writeSortedPulledFile = open(data_loc+'/outcome/sortedPulledDicomFiles.txt', 'w')
+    writeSortedPulledFile = open('outcome/sortedPulledDicomFiles.txt', 'w')
     try:
         writeSortedPulledFile.writelines(outlines)
     finally:
@@ -945,6 +1031,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     # (0010,0010),PatientName/ID                                    #
     # (0012,0021),"BRCA1F"  (0012,0040),StudyNo                     #
     #################################################################
+    os.chdir(str(imagepath))
     print 'Anonymize images at cwd: ' + os.getcwd()
 
     # Make anonymized UID.
@@ -978,7 +1065,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
             if SeriesPair[1] == k: # v:
                 #print SeriesPair[1], '\t\t', v #, '\n' ###[0], '\t\t', k #, '\n'
                 imagefList.append(SeriesPair[0])
-                cmd = 'dcmodify -gin -m "(0020,000D)=' + anonyStudyUID + '" -m "(0020,000e)=' + anonySeriesUID + '" \
+                cmd = data_loc+'/dcmodify -gin -m "(0020,000D)=' + anonyStudyUID + '" -m "(0020,000e)=' + anonySeriesUID + '" \
                 -m "(0010,0010)=' + aPatientName + '" -m "(0010,0020)=' + aPatientID +'" \
                 -i "(0012,0021)=BRCA1F" -i "(0012,0040)=' + ClinicTrialNo + '" ' + SeriesPair[0] + ' > ' +data_loc+'/outcome/dcmodifiedPulledDicomFiles.txt'
                 lines = os.system(cmd)
@@ -990,8 +1077,6 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
 
     ##########################################################################
     # Clean files
-    imagepath = data_loc+os.sep+str(StudyID)+os.sep+str(AccessionN)
-    os.chdir(imagepath)
 
     bakimagepath = ('*.bak').strip() # (iExamID + '\\*.bak').strip()
     print 'Clean backup files (' + bakimagepath + ') ....' ;
@@ -1012,10 +1097,10 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     print 'imagepath: ', imagepath
 
     #########################################
-    os.chdir(str(path_rootFolder))
+    os.chdir(str(data_loc))
 
     # Group all image files into a number of series for StudyUID/SeriesUID generation.
-    cmd = path_rootFolder+'/dcmdump +f -L +F +P "0020,000e" +P "0020,0011" "' + imagepath + '" > '+data_loc+'/outcome/anonyPulledDicomFiles.txt'
+    cmd = 'dcmdump +f -L +F +P "0020,000e" +P "0020,0011" "' + imagepath + '" > outcome/anonyPulledDicomFiles.txt'
     print 'cmd -> ' + cmd
     print 'Begin SortAnonyDicom ....' ;
     lines = os.system(cmd)
@@ -1025,7 +1110,7 @@ def pull_pacs(path_rootFolder, data_loc, clinical_aet, clinical_port, clinical_I
     # This part will arrange individual images into folders by Series   #
     # Creates a folder for each series                                     #
     ##########################################################################
-    readPulledSortedFiles = open(data_loc+'/outcome/descripPulledDicomFiles_'+str(StudyID)+'.txt', 'r')
+    readPulledSortedFiles = open('outcome/descripPulledDicomFiles_'+str(StudyID)+'.txt', 'r')
     
     #'---------------------------------------'
     os.chdir(imagepath)

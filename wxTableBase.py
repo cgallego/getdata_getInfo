@@ -142,7 +142,7 @@ class Container(wx.Frame):
     def OnCloseWindow(self, e):
 
         dial = wx.MessageDialog(None, 'Are you sure to quit?', 'Question',
-            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+            wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION)
             
         ret = dial.ShowModal()
         
@@ -173,5 +173,3 @@ def test():
     frame.Centre()
     frame.Show(True)
     app.MainLoop()
-    
-  

@@ -116,7 +116,7 @@ class Query(object):
         #for cad_case in session.query(Cad_record).order_by(Cad_record.pt_id): 
         #    print cad_case.pt_id, cad_case.cad_pt_no_txt, cad_case.latest_mutation_status_int    
         
-        datainfo = []; is_mass=[];  is_nonmass=[]; pathology=[]; 
+        datainfo = []; is_mass=[];  is_nonmass=[]; pathology=[]; radreport=[];
         for cad, exam, finding, proc, patho in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
                      filter(database.Cad_record.pt_id==database.Exam_record.pt_id).\
                      filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
@@ -138,9 +138,12 @@ class Query(object):
                print "patho is empty"
                    
            datainfo.append([cad.cad_pt_no_txt, cad.latest_mutation_status_int,
-              exam.exam_dt_datetime, exam.a_number_txt, exam.mri_cad_status_txt, exam.comment_txt,
+              exam.exam_dt_datetime, exam.a_number_txt, exam.exam_img_dicom_txt, exam.mri_cad_status_txt, exam.comment_txt, exam.original_report_txt,
               finding.mri_mass_yn, finding.mri_nonmass_yn, finding.mri_foci_yn,
               proc.pt_procedure_id, proc.proc_dt_datetime, proc.proc_side_int, proc.proc_source_int, proc.proc_guid_int, proc.proc_tp_int, proc.original_report_txt])
+           
+           # Create rad report dataset
+           radreport.append([ str(exam.original_report_txt), str(exam.comment_txt)])
            
            #iterate through patho keys
            pathodict = patho.__dict__
@@ -171,11 +174,15 @@ class Query(object):
         
         ################### Send to table display  
         # add main CAD record table       
-        colLabels = ("cad.cad_pt_no_txt", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt", "exam.mri_cad_status_txt", "exam.comment_txt", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "proc.pt_procedure_id", "proc.proc_dt_datetime", "proc.proc_side_int", "proc.proc_source_int", "proc.proc_guid_int", "proc.proc_tp_int", "proc.original_report_txt")
+        colLabels = ("cad.cad_pt_no_txt", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt","exam.exam_img_dicom_txt","exam.mri_cad_status_txt","exam.comment_txt","exam.original_report", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "proc.pt_procedure_id", "proc.proc_dt_datetime", "proc.proc_side_int", "proc.proc_source_int", "proc.proc_guid_int", "proc.proc_tp_int", "proc.original_report_txt")
         rowLabels = tuple(["%s" % str(x) for x in xrange(0,len(datainfo))])
         # Add display query to wxTable    
         self.display.Cad_Container_initGUI(datainfo, rowLabels, colLabels)
         
+        # write output query to pandas frame.
+        radreport_label = ("exam.original_report_txt", "exam.comment_txt")
+        self.radreport = pd.DataFrame(data=array(radreport), columns=list(radreport_label))
+           
         # write output query to pandas frame.
         self.d1 = pd.DataFrame(data=array(datainfo), columns=list(colLabels))
         
@@ -196,7 +203,7 @@ class Query(object):
         self.display.Show()
         self.app.MainLoop()    
         
-        return
+        return is_mass, colLabelsmass, is_nonmass, colLabelsnonmass
         
 
     def queryDatabasewNoGui(self, StudyID, redateID):
@@ -302,6 +309,11 @@ class Query(object):
         self.Session.configure(bind=engine)  # once engine is available
         session = self.Session() #instantiate a Session
                 
+        # Create first display
+        #""" Creates Table grid and Query output display Cad_Container"""
+        #self.app = wx.App(False)
+        #self.display = wxTableBase.Container(self.app)
+        
         #for cad_case in session.query(Cad_record).order_by(Cad_record.pt_id): 
         #    print cad_case.pt_id, cad_case.cad_pt_no_txt, cad_case.latest_mutation_status_int    
         
@@ -368,7 +380,6 @@ class Query(object):
         self.display.Center()
         self.display.Show(True)
         self.app.MainLoop()   
-
 
         return  self.is_mass, colLabelsmass, self.is_nonmass, colLabelsnonmass
         
@@ -483,6 +494,7 @@ class Query(object):
         return  self.is_mass, colLabelsmass, self.is_nonmass, colLabelsnonmass
         
         
+        
     def queryDatabasebyProc(self, StudyID, procdate):
         """
         run : Query by StudyID/AccesionN pair study to local folder
@@ -516,8 +528,7 @@ class Query(object):
                      filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
                      filter(database.Exam_record.pt_id==database.Procedure.pt_id).\
                      filter(database.Procedure.pt_procedure_id==database.Pathology.pt_procedure_id).\
-                     filter(database.Cad_record.cad_pt_no_txt == str(StudyID)).\
-                     filter(database.Procedure.proc_dt_datetime == str(procdate)).all():
+                     filter(database.Cad_record.cad_pt_no_txt == str(StudyID)).all():
                          
            # print results
            if not cad:

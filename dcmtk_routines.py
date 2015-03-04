@@ -430,7 +430,7 @@ def pull_MRI_MARTEL(data_loc, img_folder, remote_aet, remote_port, remote_IP, lo
         # Proceed to retrive images
         # query protocol using the DICOM C-FIND primitive. 
         # For Retrieval the C-MOVE protocol requires that all primary keys down to the hierarchy level of retrieve must be provided
-        cmd = data_loc+os.sep+'movescu -v -S +P '+ local_port +' -k 0008,0052="IMAGE" -k 0020,000d=' + ListOfExamsUID[int(IDser)] + ' -k 0020,000e=' + ListOfSeriesUID[int(IDser)] + '\
+        cmd = data_loc+os.sep+'movescu -S +P '+ local_port +' -k 0008,0052="IMAGE" -k 0020,000d=' + ListOfExamsUID[int(IDser)] + ' -k 0020,000e=' + ListOfSeriesUID[int(IDser)] + '\
         -aec ' + remote_aet + ' -aet ' + my_aet + ' -aem ' + my_aet + ' ' + remote_IP + ' ' + remote_port
         print cmd
             
@@ -750,7 +750,6 @@ def pull_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, lo
     readQueryFile1 = open( 'querydata/'+PatientID+'_querydata_'+AccessionN+'.txt', 'r')
     readQueryFile1.seek(0)
     line = readQueryFile1.readline()
-    print
     print '---------------------------------------'
     ListOfExams = []
     ListOfExamsUID = [] ;
@@ -800,8 +799,7 @@ def pull_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, lo
             line = readQueryFile1.readline()
 
     readQueryFile1.close()
-    
-    print ListOfExams
+    #print ListOfExams
 
     #################################################
     # Added: User input to pull specific Exam by Accession
@@ -893,14 +891,14 @@ def pull_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, lo
     print 'Begin dump to dcm ....' ;
     os.system(cmd)
     print 'outcome/RetrieveExam.dcm is formed for pulling image from remote_aet.'
-    print
+    
 
     # Now Create a subfolder : AccessionN to pull images .
     os.chdir(img_folder+os.sep+str(StudyID)+os.sep+str(AccessionN))
 
     ########## START PULL #######################################
     print 'Pulling images to cwd: ' + os.getcwd()
-    cmd = data_loc+'/movescu -v -P +P ' + local_port + ' -aem ' + my_aet + ' -aet ' + my_aet + ' -aec ' + clinical_aet \
+    cmd = data_loc+'/movescu -P +P ' + local_port + ' -aem ' + my_aet + ' -aet ' + my_aet + ' -aec ' + clinical_aet \
     + ' ' + clinical_IP + ' ' + clinical_port + ' ' + data_loc+'/outcome/RetrieveExam.dcm '
 
     print 'cmd -> ' + cmd
@@ -966,14 +964,14 @@ def pull_pacs(data_loc, img_folder, clinical_aet, clinical_port, clinical_IP, lo
     readPulledFiles.close()
 
     print "\n************************************************"
-    print 'ListOfSeriesGroup'
-    print ListOfSeriesGroup
+    #print 'ListOfSeriesGroup'
+    #print ListOfSeriesGroup
 
-    print 'ListOfSeriesGroup'
-    ListOfSeriesGroupRev
+    #print 'ListOfSeriesGroup'
+    #ListOfSeriesGroupRev
 
-    print 'ListOfSeriesGroup'
-    ListOfSeriesPairs
+    #print 'ListOfSeriesGroup'
+    #ListOfSeriesPairs
 
     # Make a compact dictionary for {ListOfSeriesGroup}.
     ListOfSeriesGroupUnique = dict(ListOfSeriesGroup) #ListOfSeriesGroup:

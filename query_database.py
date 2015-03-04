@@ -348,7 +348,7 @@ class Query(object):
                self.is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int ])
           
           ####### finish finding masses and non-masses
-        
+
         ################### Send to table display  
         # add main CAD record table       
         colLabels = ("cad.cad_pt_no_txt", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt", "exam.exam_img_dicom_txt", "exam.mri_cad_status_txt", "exam.comment_txt", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "all_comments_txt")

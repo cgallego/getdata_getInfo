@@ -313,7 +313,7 @@ def get_series(StudyID,img_folder):
             if(listSeries_files != []):
                 path_filenameID = img_folder+StudyID+os.sep+eID+os.sep+sID+os.sep+listSeries_files[0]
                 try:
-                    dicomInfo = dicom.read_file(os.path.abspath(path_filenameID))
+                    dicomInfo = dicom.read_file(os.path.abspath(path_filenameID), force=True)
                 except ValueError:
                     dicomInfo = []
                     

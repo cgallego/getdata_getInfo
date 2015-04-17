@@ -116,7 +116,7 @@ class Query(object):
         #for cad_case in session.query(Cad_record).order_by(Cad_record.pt_id): 
         #    print cad_case.pt_id, cad_case.cad_pt_no_txt, cad_case.latest_mutation_status_int    
         
-        datainfo = []; is_mass=[];  is_nonmass=[]; pathology=[]; radreport=[];
+        datainfo = []; is_mass=[];  is_nonmass=[]; is_foci=[]; pathology=[]; radreport=[];
         for cad, exam, finding, proc, patho in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
                      filter(database.Cad_record.pt_id==database.Exam_record.pt_id).\
                      filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
@@ -169,6 +169,15 @@ class Query(object):
            # Find if it's mass or non-mass and process
            if (finding.mri_nonmass_yn):
                is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int ])
+        
+           # Find if it's mass or non-mass and process
+           if (finding.mri_foci_yn):
+               is_foci.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_foci_distr_int, finding.t2_signal_int])
+           
+           # Find if it's mass or non-mass and process
+           if (finding.mri_o_find_other_yn):
+               is_mass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_mass_margin_int, finding.mammo_n_mri_mass_shape_int, finding.t2_signal_int])
+           
           
           ####### finish finding masses and non-masses
         
@@ -198,12 +207,18 @@ class Query(object):
         # Add display query to wxTable    
         self.display.MassNonM_Container_initGUI(is_nonmass, rowLabelsnonmass, colLabelsnonmass, "NonMasses")
         
+        # add foci lesion record table
+        colLabelsfoci = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_foci_distr_int", "finding.t2_signal_int")
+        rowLabelsfoci = tuple(["%s" % str(x) for x in xrange(0,len(is_foci))])
+        # Add display query to wxTable    
+        self.display.MassNonM_Container_initGUI(is_foci, rowLabelsfoci, colLabelsfoci, "Foci")
+        
         # Finish the display and Show
         self.display.Centre()
         self.display.Show()
         self.app.MainLoop()    
         
-        return is_mass, colLabelsmass, is_nonmass, colLabelsnonmass
+        return is_mass, colLabelsmass, is_nonmass, colLabelsnonmass, is_foci, colLabelsfoci
         
 
     def queryDatabasewNoGui(self, StudyID, redateID):
@@ -265,11 +280,11 @@ class Query(object):
            
            # Find if it's mass or non-mass and process
            if (finding.mri_mass_yn):
-               is_mass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_mass_margin_int, finding.mammo_n_mri_mass_shape_int, finding.t2_signal_int])
+               is_mass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_mass_margin_int, finding.mammo_n_mri_mass_shape_int, finding.t2_signal_int, finding.all_birads_scr_int])
            
            # Find if it's mass or non-mass and process
            if (finding.mri_nonmass_yn):
-               is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int ])
+               is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int, finding.all_birads_scr_int ])
           
           ####### finish finding masses and non-masses
         
@@ -282,11 +297,11 @@ class Query(object):
         self.d1 = pd.DataFrame(data=array(datainfo), columns=list(colLabels))
         
         # add mass lesion record table
-        colLabelsmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_mass_margin_int", "finding.mammo_n_mri_mass_shape_int", "finding.t2_signal_int")
+        colLabelsmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_mass_margin_int", "finding.mammo_n_mri_mass_shape_int", "finding.t2_signal_int", "finding.all_birads_scr_int")
         rowLabelsmass = tuple(["%s" % str(x) for x in xrange(0,len(is_mass))])
         
         # add non-mass lesion record table
-        colLabelsnonmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_nonmass_dist_int", "finding.mri_nonmass_int_enh_int", "finding.t2_signal_int")
+        colLabelsnonmass = ("finding.side_int", "finding.size_x_double", "finding.size_y_double", "finding.size_z_double", "finding.mri_dce_init_enh_int", "finding.mri_dce_delay_enh_int", "finding.curve_int", "finding.mri_nonmass_dist_int", "finding.mri_nonmass_int_enh_int", "finding.t2_signal_int", "finding.all_birads_scr_int")
         rowLabelsnonmass = tuple(["%s" % str(x) for x in xrange(0,len(is_nonmass))])
         
         return 

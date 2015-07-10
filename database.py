@@ -17,6 +17,24 @@ from sqlalchemy.orm import relationship, backref
 
 from base import Base
 
+
+#  created a patient mapping 
+class Pt_record(Base):
+    """Base for Pt_record class using Declarative. for table tbl_pt_demographics
+    Outputs:
+    ========    
+    tbl_pt_demographics.pt_id, 
+    tbl_pt_demographics.anony_dob_datetime
+    
+    """
+    __tablename__ = 'tbl_pt_demographics'
+    __table_args__ = {'autoload':True}
+    pt_id = Column(Integer, primary_key=True)
+      
+    def __repr__(self):
+        return "Pt_record: pt_id=%s, mutation_status=%s" % (self.pt_id, self.anony_dob_datetime)
+
+
 #  created a Cad_record mapping 
 class Cad_record(Base):
     """Base for cad_record class using Declarative. for table tbl_pt_mri_cad_record
@@ -30,10 +48,12 @@ class Cad_record(Base):
     """
     __tablename__ = 'tbl_pt_mri_cad_record'
     __table_args__ = {'autoload':True}
-    pt_id = Column(Integer, primary_key=True)
+    pt_mri_cad_record_id = Column(Integer, primary_key=True)
+    pt_id = Column(Integer, ForeignKey('tbl_pt_demographics.pt_id'))
       
     def __repr__(self):
         return "Cad_record: cad_pt_no=%s, mutation_status=%s" % (self.cad_pt_no_txt, self.latest_mutation_status_int)
+
 
 #  created a Exam_record mapping                              
 class Exam_record(Base):

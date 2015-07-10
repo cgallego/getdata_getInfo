@@ -117,7 +117,8 @@ class Query(object):
         #    print cad_case.pt_id, cad_case.cad_pt_no_txt, cad_case.latest_mutation_status_int    
         
         datainfo = []; is_mass=[];  is_nonmass=[]; is_foci=[]; pathology=[]; radreport=[];
-        for cad, exam, finding, proc, patho in session.query(database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
+        for pt, cad, exam, finding, proc, patho in session.query(database.Pt_record, database.Cad_record, database.Exam_record, database.Exam_Finding, database.Procedure, database.Pathology).\
+                     filter(database.Pt_record.pt_id==database.Cad_record.pt_id).\
                      filter(database.Cad_record.pt_id==database.Exam_record.pt_id).\
                      filter(database.Exam_record.pt_exam_id==database.Exam_Finding.pt_exam_id).\
                      filter(database.Exam_record.pt_id==database.Procedure.pt_id).\
@@ -137,8 +138,9 @@ class Query(object):
            if not patho:
                print "patho is empty"
                    
-           datainfo.append([cad.cad_pt_no_txt, cad.latest_mutation_status_int,
+           datainfo.append([cad.cad_pt_no_txt, pt.anony_dob_datetime, cad.latest_mutation_status_int,
               exam.exam_dt_datetime, exam.a_number_txt, exam.exam_img_dicom_txt, exam.mri_cad_status_txt, exam.comment_txt, exam.original_report_txt,
+              finding.all_birads_scr_int,
               finding.mri_mass_yn, finding.mri_nonmass_yn, finding.mri_foci_yn,
               proc.pt_procedure_id, proc.proc_dt_datetime, proc.proc_side_int, proc.proc_source_int, proc.proc_guid_int, proc.proc_tp_int, proc.original_report_txt])
            
@@ -176,14 +178,14 @@ class Query(object):
            
            # Find if it's mass or non-mass and process
            if (finding.mri_o_find_other_yn):
-               is_mass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_mass_margin_int, finding.mammo_n_mri_mass_shape_int, finding.t2_signal_int])
+               is_nonmass.append([finding.side_int, finding.size_x_double, finding.size_y_double, finding.size_z_double, finding.mri_dce_init_enh_int, finding.mri_dce_delay_enh_int, finding.curve_int, finding.mri_nonmass_dist_int, finding.mri_nonmass_int_enh_int, finding.t2_signal_int])
            
           
           ####### finish finding masses and non-masses
         
         ################### Send to table display  
         # add main CAD record table       
-        colLabels = ("cad.cad_pt_no_txt", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt","exam.exam_img_dicom_txt","exam.mri_cad_status_txt","exam.comment_txt","exam.original_report", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "proc.pt_procedure_id", "proc.proc_dt_datetime", "proc.proc_side_int", "proc.proc_source_int", "proc.proc_guid_int", "proc.proc_tp_int", "proc.original_report_txt")
+        colLabels = ("cad.cad_pt_no_txt", "pt.anony_dob_datetime", "cad.latest_mutation", "exam.exam_dt_datetime","exam.a_number_txt","exam.exam_img_dicom_txt","exam.mri_cad_status_txt","exam.comment_txt","exam.original_report", "finding.all_birads_scr_int", "finding.mri_mass_yn", "finding.mri_nonmass_yn", "finding.mri_foci_yn", "proc.pt_procedure_id", "proc.proc_dt_datetime", "proc.proc_side_int", "proc.proc_source_int", "proc.proc_guid_int", "proc.proc_tp_int", "proc.original_report_txt")
         rowLabels = tuple(["%s" % str(x) for x in xrange(0,len(datainfo))])
         # Add display query to wxTable    
         self.display.Cad_Container_initGUI(datainfo, rowLabels, colLabels)
